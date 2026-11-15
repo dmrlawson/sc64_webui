@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SummerCart64 Files</title>
+<style>
+:root {
+  --bg: #f4f5f7; --panel: #ffffff; --text: #1c2030; --muted: #68708a; --line: #dfe2ea;
+  --accent: #2456d6; --accent-text: #ffffff; --hover: #eef2fc; --warn-bg: #fff4d6; --warn-text: #6b4a00;
+  --bad-bg: #fde3e3; --bad-text: #8a1c1c; --ok: #1f9d55; --danger: #c62828;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161d; --panel: #1d2029; --text: #e6e8ef; --muted: #9299ad; --line: #2e3240;
+    --accent: #6d95ff; --accent-text: #0d1020; --hover: #262b3a; --warn-bg: #3d3212; --warn-text: #ffdf8a;
+    --bad-bg: #401c1c; --bad-text: #ffb3b3; --ok: #4cc38a; --danger: #ff7b72;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 960px; margin: 0 auto; padding: 16px; }
+header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+h1 { font-size: 20px; margin: 0; flex: 1; white-space: nowrap; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.dot.ok { background: var(--ok); } .dot.warn { background: #e0a100; } .dot.bad { background: var(--danger); }
+#banner { display: none; padding: 12px 14px; border-radius: 8px; margin-bottom: 12px; background: var(--warn-bg); color: var(--warn-text); font-weight: 600; }
+#banner.bad { background: var(--bad-bg); color: var(--bad-text); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+#crumbs { flex: 1; min-width: 160px; display: flex; flex-wrap: wrap; align-items: center; gap: 2px; font-weight: 600; }
+#crumbs a { color: var(--accent); text-decoration: none; padding: 2px 4px; border-radius: 4px; }
+#crumbs a:hover { background: var(--hover); }
+#crumbs span { color: var(--muted); }
+button { font: inherit; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer; }
+button:hover:not(:disabled) { background: var(--hover); }
+button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+button.primary:hover:not(:disabled) { filter: brightness(1.1); background: var(--accent); }
+button:disabled { opacity: .5; cursor: default; }
+button.icon { padding: 4px 8px; border-color: transparent; background: none; }
+button.icon.danger:hover { color: var(--danger); }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
+tr:last-child td { border-bottom: 0; }
+tbody tr:hover { background: var(--hover); }
+td.name { width: 100%; word-break: break-word; }
+td.name a { color: inherit; text-decoration: none; cursor: pointer; }
+td.name a:hover { color: var(--accent); }
+td.num, th.num { text-align: right; white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }
+td.actions { white-space: nowrap; text-align: right; padding: 4px 8px; }
+.empty { padding: 36px 12px; text-align: center; color: var(--muted); }
+.disabled { opacity: .45; pointer-events: none; }
+#drop { display: none; position: fixed; inset: 0; background: rgba(36, 86, 214, .25); border: 4px dashed var(--accent); z-index: 10; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; color: var(--text); pointer-events: none; }
+#drop.on { display: flex; }
+#queue { display: none; margin-top: 12px; }
+#queue h2 { font-size: 14px; margin: 0; flex: 1; }
+.job { padding: 8px 12px; border-bottom: 1px solid var(--line); }
+.job:last-child { border-bottom: 0; }
+.job .row { display: flex; gap: 8px; align-items: baseline; }
+.job .jname { flex: 1; word-break: break-word; }
+.job .jinfo { color: var(--muted); font-size: 13px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.job.failed .jinfo { color: var(--danger); white-space: normal; }
+.job.done .jinfo { color: var(--ok); }
+.bar { height: 4px; border-radius: 2px; background: var(--line); margin-top: 6px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+footer { margin-top: 14px; color: var(--muted); font-size: 13px; display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+footer a, footer button { color: var(--accent); background: none; border: 0; padding: 0; font-size: 13px; text-decoration: none; cursor: pointer; }
+#toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--bad-bg); color: var(--bad-text); padding: 10px 16px; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.25); display: none; max-width: 90vw; z-index: 20; }
+@media (max-width: 600px) { .hide-sm { display: none; } th, td { padding: 8px; } }
+</style>
+</head>
+<body>
+<div id="drop">Drop to upload here</div>
+<main>
+  <header>
+    <h1>SummerCart64 Files</h1>
+    <span class="pill" id="space" style="display:none"></span>
+    <span class="pill"><span class="dot" id="dot"></span><span id="state">Connecting…</span></span>
+  </header>
+  <div id="banner"></div>
+  <div class="panel" id="browser">
+    <div class="toolbar">
+      <div id="crumbs"></div>
+      <button id="btn-refresh" title="Reload this folder">Refresh</button>
+      <button id="btn-mkdir">New folder</button>
+      <button id="btn-folder" class="hide-sm">Upload folder</button>
+      <button id="btn-upload" class="primary">Upload files</button>
+    </div>
+    <div id="listing"><div class="empty">Loading…</div></div>
+  </div>
+  <div class="panel" id="queue">
+    <div class="toolbar"><h2 id="queue-title">Uploads</h2><button id="btn-cancel">Cancel all</button><button id="btn-clear">Clear finished</button></div>
+    <div id="jobs"></div>
+  </div>
+  <footer>
+    <span id="ver"></span>
+    <span id="fw"></span>
+    <span id="rtc"></span>
+    <button id="btn-clock" title="Set the SummerCart64 real-time clock from this device">Set cart clock to now</button>
+    <a href="/api/log" target="_blank">Device log</a>
+    <button id="btn-fw" title="Install new Web UI firmware from a .uf2 file">Update firmware</button>
+  </footer>
+</main>
+<div id="toast"></div>
+<input type="file" id="pick-files" multiple hidden>
+<input type="file" id="pick-folder" webkitdirectory hidden>
+<input type="file" id="pick-fw" accept=".uf2" hidden>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const el = (tag, props, ...kids) => {
+  const e = Object.assign(document.createElement(tag), props || {});
+  e.append(...kids);
+  return e;
+};
+
+let cwd = "/";
+let entries = [];
+let ready = false;        // SD card can be managed right now
+let listedOk = false;     // current folder listing is valid
+let lastState = "";
+const jobs = [];          // upload queue
+let activeJob = null;
+let updating = null;      // firmware update in progress: { version, uploading, sawOffline }
+
+// ---- helpers ----
+
+const fmtSize = (n) => {
+  if (n < 1024) return n + " B";
+  const units = ["kB", "MB", "GB", "TB"];
+  let i = -1;
+  do { n /= 1024; i++; } while (n >= 1024 && i < units.length - 1);
+  return n.toFixed(n < 10 ? 2 : n < 100 ? 1 : 0) + " " + units[i];
+};
+const pad = (n) => String(n).padStart(2, "0");
+const fmtDate = (d, t) => d ? `${(d >> 9) + 1980}-${pad((d >> 5) & 15)}-${pad(d & 31)} ${pad(t >> 11)}:${pad((t >> 5) & 63)}` : "";
+const join = (dir, name) => (dir === "/" ? "" : dir) + "/" + name;
+const q = (path) => encodeURIComponent(path);
+
+let toastTimer;
+function toast(message) {
+  const t = $("toast");
+  t.textContent = message;
+  t.style.display = "block";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.style.display = "none"; }, 6000);
+}
+
+async function api(method, url, timeoutMs) {
+  const ctl = new AbortController();
+  const timer = timeoutMs ? setTimeout(() => ctl.abort(), timeoutMs) : null;
+  try {
+    const res = await fetch(url, { method, signal: ctl.signal, cache: "no-store" });
+    const data = await res.json();
+    if (!res.ok) {
+      const err = new Error(data.error || ("HTTP " + res.status));
+      err.state = data.state;
+      err.status = res.status;
+      throw err;
+    }
+    return data;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+// ---- status ----
+
+function showStatus(st) {
+  if (updating) {
+    // Wait for the device to drop off and come back (or report a new
+    // version), then reload: the new firmware may bring a new page.
+    if (st.state !== "offline" && (updating.sawOffline || st.version !== updating.version)) location.reload();
+    return;
+  }
+  const good = st.state === "ready";
+  const changed = st.state !== lastState;
+  lastState = st.state;
+  ready = good;
+  $("dot").className = "dot " + (good ? "ok" : st.state === "console_on" || st.state === "busy" ? "warn" : "bad");
+  $("state").textContent = { ready: "Ready", console_on: "Console is on", busy: "Card in use", no_usb: "Cart not connected",
+    no_link: "Cart not responding", no_card: "No SD card", sd_error: "SD card error", no_fs: "Unreadable card",
+    offline: "Device unreachable" }[st.state] || st.state;
+  const banner = $("banner");
+  banner.style.display = good ? "none" : "block";
+  banner.className = st.state === "console_on" || st.state === "busy" ? "" : "bad";
+  banner.textContent = st.message || "";
+  $("browser").classList.toggle("disabled", !good);
+  if (st.version) $("ver").textContent = "Web UI " + st.version;
+  if (st.firmware) $("fw").textContent = "SC64 firmware " + st.firmware;
+  $("rtc").textContent = st.rtc ? "Cart clock " + st.rtc.slice(0, 16) : "";
+  $("btn-clock").style.display = st.firmware ? "" : "none";
+  if (good && (changed || !listedOk)) refresh();
+}
+
+let polling = false;
+async function poll() {
+  // The device serves one request at a time, so do not queue status checks
+  // behind a running upload.
+  if (polling || activeJob || (updating && updating.uploading)) return;
+  polling = true;
+  try {
+    showStatus(await api("GET", "/api/status", 5000));
+  } catch (e) {
+    if (updating) updating.sawOffline = true;
+    if (e.name !== "AbortError") {
+      showStatus({ state: "offline", message: "Cannot reach the SummerCart64 web UI device. Is it powered and on the network?" });
+    }
+  } finally {
+    polling = false;
+  }
+}
+
+// A failed file operation usually means the state changed (console switched
+// on, cable pulled...), so re-check straight away.
+function fail(e) {
+  toast(e.message);
+  if (e.state) showStatus({ state: e.state, message: e.message });
+  else poll();
+}
+
+// ---- listing ----
+
+function renderCrumbs() {
+  const c = $("crumbs");
+  c.replaceChildren(el("a", { href: "#/", textContent: "SD card" }));
+  let path = "";
+  for (const part of cwd.split("/").filter(Boolean)) {
+    path += "/" + part;
+    c.append(el("span", { textContent: "/" }), el("a", { href: "#" + path.split("/").map(encodeURIComponent).join("/"), textContent: part }));
+  }
+}
+
+function render() {
+  renderCrumbs();
+  const box = $("listing");
+  if (!entries.length) {
+    box.replaceChildren(el("div", { className: "empty", textContent: "This folder is empty. Drop files here to upload." }));
+    return;
+  }
+  const body = el("tbody");
+  for (const e of entries) {
+    const path = join(cwd, e.name);
+    const link = e.dir
+      ? el("a", { href: "#" + path.split("/").map(encodeURIComponent).join("/"), textContent: "📁 " + e.name })
+      : el("a", { href: "/api/download?path=" + q(path), download: e.name, textContent: "📄 " + e.name, title: "Download" });
+    const actions = el("td", { className: "actions" });
+    const ren = el("button", { className: "icon", title: "Rename", textContent: "✎" });
+    ren.onclick = () => rename(e);
+    const del = el("button", { className: "icon danger", title: "Delete", textContent: "🗑" });
+    del.onclick = () => remove(e);
+    actions.append(ren, del);
+    body.append(el("tr", null,
+      el("td", { className: "name" }, link),
+      el("td", { className: "num", textContent: e.dir ? "" : fmtSize(e.size) }),
+      el("td", { className: "num hide-sm", textContent: fmtDate(e.date, e.time) }),
+      actions));
+  }
+  box.replaceChildren(el("table", null,
+    el("thead", null, el("tr", null,
+      el("th", { textContent: "Name" }), el("th", { className: "num", textContent: "Size" }),
+      el("th", { className: "num hide-sm", textContent: "Modified" }), el("th"))),
+    body));
+}
+
+let refreshSeq = 0;
+async function refresh() {
+  const seq = ++refreshSeq;
+  try {
+    const data = await api("GET", "/api/list?path=" + q(cwd));
+    if (seq !== refreshSeq) return;
+    if (!data.complete) throw new Error("The folder listing was cut short by an SD card error.");
+    const cmp = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" }).compare;
+    entries = data.entries.sort((a, b) => (b.dir - a.dir) || cmp(a.name, b.name));
+    listedOk = true;
+    render();
+    loadSpace();
+  } catch (e) {
+    if (seq !== refreshSeq) return;
+    listedOk = false;
+    if (e.status === 404 && cwd !== "/") {
+      toast("That folder no longer exists.");
+      location.hash = "#/";
+      return;
+    }
+    fail(e);
+  }
+}
+
+async function loadSpace() {
+  try {
+    const df = await api("GET", "/api/df");
+    $("space").style.display = "";
+    $("space").textContent = `${fmtSize(df.free)} free of ${fmtSize(df.total)}`;
+  } catch (e) { /* cosmetic only */ }
+}
+
+function navigate() {
+  let path = "/";
+  try { path = decodeURIComponent(location.hash.slice(1)) || "/"; } catch (e) { /* bad escape */ }
+  if (!path.startsWith("/")) path = "/";
+  cwd = path.length > 1 ? path.replace(/\/+$/, "") : "/";
+  entries = [];
+  listedOk = false;
+  renderCrumbs();
+  $("listing").replaceChildren(el("div", { className: "empty", textContent: "Loading…" }));
+  if (ready) refresh();
+}
+
+// ---- file operations ----
+
+const badName = (name) => !name || name === "." || name === ".." || /[\\/:*?"<>|\x00-\x1f]/.test(name);
+
+async function mkdir() {
+  const name = (prompt("New folder name:") || "").trim();
+  if (!name) return;
+  if (badName(name)) return toast("That name contains characters the SD card cannot store.");
+  try {
+    await api("POST", "/api/mkdir?path=" + q(join(cwd, name)));
+    refresh();
+  } catch (e) { fail(e); }
+}
+
+async function rename(entry) {
+  const name = (prompt(`Rename "${entry.name}" to:`, entry.name) || "").trim();
+  if (!name || name === entry.name) return;
+  if (badName(name)) return toast("That name contains characters the SD card cannot store.");
+  try {
+    await api("POST", `/api/rename?from=${q(join(cwd, entry.name))}&to=${q(join(cwd, name))}`);
+    refresh();
+  } catch (e) { fail(e); }
+}
+
+async function remove(entry) {
+  const what = entry.dir ? `the folder "${entry.name}" and everything inside it` : `"${entry.name}"`;
+  if (!confirm(`Delete ${what}? This cannot be undone.`)) return;
+  try {
+    await api("POST", "/api/delete?path=" + q(join(cwd, entry.name)));
+  } catch (e) { fail(e); }
+  refresh();
+}
+
+async function setClock() {
+  const d = new Date();
+  const t = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+  try {
+    await api("POST", `/api/time?t=${t}&wd=${d.getDay() || 7}`);
+    poll();
+  } catch (e) { fail(e); }
+}
+
+// ---- firmware update ----
+
+function showUpdate(message) {
+  const banner = $("banner");
+  banner.style.display = "block";
+  banner.className = "";
+  banner.textContent = message;
+  $("browser").classList.add("disabled");
+}
+
+function updateFirmware(file) {
+  if (activeJob) return toast("Wait for the uploads to finish first.");
+  if (!confirm(`Install "${file.name}" as the new Web UI firmware? The device restarts itself afterwards; keep it powered until this page comes back.`)) return;
+  updating = { version: ($("ver").textContent || "").replace("Web UI ", ""), sawOffline: false, uploading: true };
+  showUpdate("Uploading firmware…");
+  const xhr = new XMLHttpRequest();
+  xhr.open("PUT", "/api/firmware");
+  xhr.upload.onprogress = (ev) => showUpdate(`Uploading firmware… ${Math.floor(100 * ev.loaded / ev.total)}%`);
+  const failed = (message) => { updating = null; lastState = ""; toast(message); poll(); };
+  xhr.onload = () => {
+    if (xhr.status === 200) {
+      updating.uploading = false;
+      showUpdate("Installing firmware. The device will restart in about half a minute; do not unplug it.");
+      return;
+    }
+    let message = "HTTP " + xhr.status;
+    try { message = JSON.parse(xhr.responseText).error; } catch (e) { /* not JSON */ }
+    failed(message);
+  };
+  xhr.onerror = () => failed("Connection lost while uploading the firmware. Nothing was installed.");
+  xhr.send(file);
+}
+
+// ---- uploads ----
+
+// items: [{file: File, rel: "sub/dir/name.z64"}], uploaded relative to the current folder.
+function enqueue(items) {
+  items = items.filter((it) => it.file);
+  if (!items.length) return;
+  if (!ready) return toast($("banner").textContent || "The SD card is not available right now.");
+  const invalid = items.find((it) => it.rel.split("/").some(badName));
+  if (invalid) return toast(`"${invalid.rel}" has a name the SD card cannot store.`);
+  const existing = new Set(entries.filter((e) => !e.dir).map((e) => e.name.toLowerCase()));
+  const clashes = items.filter((it) => !it.rel.includes("/") && existing.has(it.rel.toLowerCase()));
+  if (clashes.length && !confirm(`Replace ${clashes.length === 1 ? `"${clashes[0].rel}"` : clashes.length + " existing files"}?`)) return;
+  for (const it of items) {
+    const job = { file: it.file, dir: cwd, rel: it.rel, state: "queued", sent: 0 };
+    job.node = el("div", { className: "job" },
+      el("div", { className: "row" }, el("span", { className: "jname", textContent: join(cwd, it.rel) }), job.infoEl = el("span", { className: "jinfo", textContent: "Waiting" })),
+      el("div", { className: "bar" }, job.barEl = el("i")));
+    jobs.push(job);
+    $("jobs").append(job.node);
+  }
+  $("queue").style.display = "block";
+  pump();
+}
+
+const madeDirs = new Set();
+async function ensureDirs(job) {
+  const parts = job.rel.split("/").slice(0, -1);
+  let path = job.dir;
+  for (const part of parts) {
+    path = join(path, part);
+    if (madeDirs.has(path)) continue;
+    try {
+      await api("POST", "/api/mkdir?path=" + q(path));
+    } catch (e) {
+      if (e.status !== 409) throw e;   // already exists: fine
+    }
+    madeDirs.add(path);
+  }
+}
+
+function send(job) {
+  return new Promise((resolve, reject) => {
+    const xhr = job.xhr = new XMLHttpRequest();
+    const started = performance.now();
+    xhr.open("PUT", "/api/upload?path=" + q(join(job.dir, job.rel)));
+    xhr.upload.onprogress = (ev) => {
+      job.sent = ev.loaded;
+      const secs = (performance.now() - started) / 1000;
+      const rate = secs > 0.5 ? ev.loaded / secs : 0;
+      const left = rate ? Math.ceil((job.file.size - ev.loaded) / rate) : 0;
+      job.barEl.style.width = (job.file.size ? (100 * ev.loaded / job.file.size) : 100) + "%";
+      job.infoEl.textContent = `${fmtSize(ev.loaded)} / ${fmtSize(job.file.size)}` + (rate ? ` · ${fmtSize(rate)}/s · ${left >= 60 ? Math.floor(left / 60) + "m " : ""}${left % 60}s left` : "");
+      updateQueueTitle();
+    };
+    xhr.onload = () => {
+      if (xhr.status === 200) return resolve();
+      let err = new Error("HTTP " + xhr.status);
+      try {
+        const data = JSON.parse(xhr.responseText);
+        err = Object.assign(new Error(data.error), { state: data.state });
+      } catch (e) { /* not JSON */ }
+      reject(err);
+    };
+    xhr.onerror = () => reject(new Error("Connection lost during upload."));
+    xhr.onabort = () => reject(new Error("Cancelled"));
+    xhr.send(job.file);
+  });
+}
+
+function updateQueueTitle() {
+  const pending = jobs.filter((j) => j.state === "queued" || j.state === "active");
+  const total = pending.reduce((n, j) => n + j.file.size, 0);
+  const sent = pending.reduce((n, j) => n + j.sent, 0);
+  $("queue-title").textContent = pending.length
+    ? `Uploading ${pending.length} file${pending.length > 1 ? "s" : ""} · ${fmtSize(sent)} of ${fmtSize(total)}`
+    : "Uploads";
+  $("btn-cancel").disabled = !pending.length;
+  document.title = pending.length && total ? `${Math.floor(100 * sent / total)}% · SummerCart64 Files` : "SummerCart64 Files";
+}
+
+async function pump() {
+  if (activeJob) return;
+  const job = jobs.find((j) => j.state === "queued");
+  updateQueueTitle();
+  if (!job) return;
+  activeJob = job;
+  job.state = "active";
+  job.infoEl.textContent = "Starting…";
+  try {
+    await ensureDirs(job);
+    await send(job);
+    job.state = "done";
+    job.sent = job.file.size;
+    job.barEl.style.width = "100%";
+    job.infoEl.textContent = "Done · " + fmtSize(job.file.size);
+  } catch (e) {
+    job.state = "failed";
+    job.infoEl.textContent = e.message;
+    if (e.state) {
+      // Device-level problem: the rest of the queue would fail the same way.
+      for (const j of jobs) if (j.state === "queued") { j.state = "failed"; j.infoEl.textContent = e.message; j.node.className = "job failed"; }
+    }
+  }
+  job.node.className = "job " + job.state;
+  activeJob = null;
+  if (job.state === "failed" && !job.cancelled) poll();
+  if (job.dir === cwd || job.state === "done") refresh();
+  pump();
+}
+
+function cancelAll() {
+  for (const j of jobs) {
+    if (j.state === "queued") { j.state = "failed"; j.cancelled = true; j.infoEl.textContent = "Cancelled"; j.node.className = "job failed"; }
+  }
+  if (activeJob) { activeJob.cancelled = true; activeJob.xhr && activeJob.xhr.abort(); }
+  updateQueueTitle();
+}
+
+function clearFinished() {
+  for (let i = jobs.length - 1; i >= 0; i--) {
+    if (jobs[i].state === "done" || jobs[i].state === "failed") { jobs[i].node.remove(); jobs.splice(i, 1); }
+  }
+  if (!jobs.length) $("queue").style.display = "none";
+}
+
+// Walk dropped folders (webkitGetAsEntry) into a flat [{file, rel}] list.
+async function walk(entry, prefix, out) {
+  if (entry.isFile) {
+    const file = await new Promise((ok, bad) => entry.file(ok, bad));
+    out.push({ file, rel: prefix + entry.name });
+  } else if (entry.isDirectory) {
+    const reader = entry.createReader();
+    for (;;) {
+      const batch = await new Promise((ok, bad) => reader.readEntries(ok, bad));
+      if (!batch.length) break;
+      for (const child of batch) await walk(child, prefix + entry.name + "/", out);
+    }
+  }
+}
+
+async function onDrop(ev) {
+  ev.preventDefault();
+  $("drop").classList.remove("on");
+  dragDepth = 0;
+  const items = [...(ev.dataTransfer.items || [])].filter((i) => i.kind === "file");
+  const roots = items.map((i) => (i.webkitGetAsEntry ? i.webkitGetAsEntry() : null));
+  const out = [];
+  if (roots.length && roots.every(Boolean)) {
+    try {
+      for (const root of roots) await walk(root, "", out);
+    } catch (e) { return toast("Could not read the dropped items."); }
+  } else {
+    for (const file of ev.dataTransfer.files) out.push({ file, rel: file.name });
+  }
+  enqueue(out);
+}
+
+// ---- wiring ----
+
+let dragDepth = 0;
+const hasFiles = (ev) => ev.dataTransfer && [...ev.dataTransfer.types].includes("Files");
+addEventListener("dragenter", (ev) => { if (hasFiles(ev)) { ev.preventDefault(); dragDepth++; $("drop").classList.add("on"); } });
+addEventListener("dragover", (ev) => { if (hasFiles(ev)) ev.preventDefault(); });
+addEventListener("dragleave", (ev) => { if (hasFiles(ev) && --dragDepth <= 0) { dragDepth = 0; $("drop").classList.remove("on"); } });
+addEventListener("drop", (ev) => { if (hasFiles(ev)) onDrop(ev); });
+addEventListener("hashchange", navigate);
+addEventListener("beforeunload", (ev) => { if (activeJob) { ev.preventDefault(); ev.returnValue = ""; } });
+
+$("btn-refresh").onclick = () => { madeDirs.clear(); refresh(); };
+$("btn-mkdir").onclick = mkdir;
+$("btn-upload").onclick = () => $("pick-files").click();
+$("btn-folder").onclick = () => $("pick-folder").click();
+$("btn-cancel").onclick = cancelAll;
+$("btn-clear").onclick = clearFinished;
+$("btn-clock").onclick = setClock;
+$("btn-fw").onclick = () => $("pick-fw").click();
+$("pick-fw").onchange = (ev) => { if (ev.target.files[0]) updateFirmware(ev.target.files[0]); ev.target.value = ""; };
+$("pick-files").onchange = (ev) => { enqueue([...ev.target.files].map((file) => ({ file, rel: file.name }))); ev.target.value = ""; };
+$("pick-folder").onchange = (ev) => { enqueue([...ev.target.files].map((file) => ({ file, rel: file.webkitRelativePath || file.name }))); ev.target.value = ""; };
+
+navigate();
+poll();
+setInterval(poll, 2000);
+</script>
+</body>
+</html>

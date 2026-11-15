@@ -1,0 +1,66 @@
+name: Release
+
+# Every push to master is built and published as a release named after the
+# date (vYYYYMMDD, UTC). Further releases on the same day get .1, .2, ...
+on:
+  push:
+    branches:
+      - master
+
+# One at a time, so two quick pushes cannot pick the same version.
+concurrency: release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Pick version
+        id: version
+        run: |
+          date=$(date -u +%Y%m%d)
+          version="v$date"
+          n=0
+          while git ls-remote --exit-code --tags origin "refs/tags/$version" > /dev/null; do
+            n=$((n + 1))
+            version="v$date.$n"
+          done
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib
+
+      - name: Check out Pico SDK
+        uses: actions/checkout@v4
+        with:
+          repository: raspberrypi/pico-sdk
+          ref: '2.2.0'
+          path: pico-sdk
+          submodules: true
+
+      - name: Build
+        env:
+          PICO_SDK_PATH: ${{ github.workspace }}/pico-sdk
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          for board in pico_w pico2_w; do
+            cmake -S . -B build-$board -DPICO_BOARD=$board -DWEBUI_VERSION=$VERSION -DCMAKE_BUILD_TYPE=Release
+            cmake --build build-$board -j$(nproc)
+            cp build-$board/sc64_webui.uf2 sc64_webui-$board-$VERSION.uf2
+          done
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          files: sc64_webui-*.uf2
