@@ -6,6 +6,8 @@
 //   console_on    - the N64 is powered on (and holds the SD lock)
 //   no_card       - SD slot is empty
 //   usb_unplugged - the SC64 is not connected
+//   usb_stuck     - nothing gets through until the device restarts
+//   cart_hung     - the SC64 does not answer, whatever we do
 // SIM_KBPS=<n> throttles SD transfers to roughly n kB/s.
 
 #include <stdio.h>
@@ -209,6 +211,13 @@ static size_t process(const uint8_t *p, size_t len) {
     return 12 + extra;
 }
 
+// What a restart of the device does to the USB side.
+void sim_restart(void) {
+    unlink("usb_stuck");
+    was_connected = false;   // comes back as a fresh connection
+    dtr = dsr = false;
+}
+
 bool tr_connected(void) {
     bool connected = !marker("usb_unplugged");
     if (connected && !was_connected) {
@@ -228,8 +237,8 @@ bool tr_write(const uint8_t *data, size_t len) {
     if (!tr_connected()) {
         return false;
     }
-    if (dtr) {
-        return true;   // interface held in reset, data is dropped
+    if (dtr || marker("usb_stuck") || marker("cart_hung")) {
+        return true;   // interface held in reset or not listening: data is dropped
     }
     if (in_len + len > in_cap) {
         in_cap = (in_len + len) * 2;

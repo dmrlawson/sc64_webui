@@ -16,6 +16,23 @@
 #include "storage.h"
 
 void sim_init(int fd);
+void sim_restart(void);
+
+static bool restart_flag;
+
+// The simulator does not really restart; it only re-enumerates the SC64.
+void plat_restart(void) {
+    log_printf("restarting");
+    sim_restart();
+}
+
+bool plat_restart_flag(void) {
+    return restart_flag;
+}
+
+void plat_set_restart_flag(bool value) {
+    restart_flag = value;
+}
 
 uint32_t plat_millis(void) {
     struct timespec ts;

@@ -27,6 +27,7 @@ h1 { font-size: 20px; margin: 0; flex: 1; white-space: nowrap; }
 .dot.ok { background: var(--ok); } .dot.warn { background: #e0a100; } .dot.bad { background: var(--danger); }
 #banner { display: none; padding: 12px 14px; border-radius: 8px; margin-bottom: 12px; background: var(--warn-bg); color: var(--warn-text); font-weight: 600; }
 #banner.bad { background: var(--bad-bg); color: var(--bad-text); }
+#banner button { margin-left: 8px; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
 .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); }
 #crumbs { flex: 1; min-width: 160px; display: flex; flex-wrap: wrap; align-items: center; gap: 2px; font-weight: 600; }
@@ -79,7 +80,7 @@ footer a, footer button { color: var(--accent); background: none; border: 0; pad
     <span class="pill" id="space" style="display:none"></span>
     <span class="pill"><span class="dot" id="dot"></span><span id="state">Connecting…</span></span>
   </header>
-  <div id="banner"></div>
+  <div id="banner"><span id="banner-text"></span> <button id="btn-restart">Restart</button></div>
   <div class="panel" id="browser">
     <div class="toolbar">
       <div id="crumbs"></div>
@@ -186,7 +187,8 @@ function showStatus(st) {
   const banner = $("banner");
   banner.style.display = good ? "none" : "block";
   banner.className = st.state === "console_on" || st.state === "busy" ? "" : "bad";
-  banner.textContent = st.message || "";
+  $("banner-text").textContent = st.message || "";
+  $("btn-restart").style.display = st.state === "no_usb" || st.state === "no_link" ? "" : "none";
   $("browser").classList.toggle("disabled", !good);
   if (st.version) $("ver").textContent = "Web UI " + st.version;
   if (st.firmware) $("fw").textContent = "SC64 firmware " + st.firmware;
@@ -371,7 +373,8 @@ function showUpdate(message) {
   const banner = $("banner");
   banner.style.display = "block";
   banner.className = "";
-  banner.textContent = message;
+  $("banner-text").textContent = message;
+  $("btn-restart").style.display = "none";
   $("browser").classList.add("disabled");
 }
 
@@ -404,7 +407,7 @@ function updateFirmware(file) {
 function enqueue(items) {
   items = items.filter((it) => it.file);
   if (!items.length) return;
-  if (!ready) return toast($("banner").textContent || "The SD card is not available right now.");
+  if (!ready) return toast($("banner-text").textContent || "The SD card is not available right now.");
   const invalid = items.find((it) => it.rel.split("/").some(badName));
   if (invalid) return toast(`"${invalid.rel}" has a name the SD card cannot store.`);
   const existing = new Set(entries.filter((e) => !e.dir).map((e) => e.name.toLowerCase()));
@@ -573,6 +576,7 @@ $("btn-folder").onclick = () => $("pick-folder").click();
 $("btn-cancel").onclick = cancelAll;
 $("btn-clear").onclick = clearFinished;
 $("btn-clock").onclick = setClock;
+$("btn-restart").onclick = () => busy(api("POST", "/api/restart")).then(poll, fail);
 $("btn-fw").onclick = () => $("pick-fw").click();
 $("pick-fw").onchange = (ev) => { if (ev.target.files[0]) updateFirmware(ev.target.files[0]); ev.target.value = ""; };
 $("pick-files").onchange = (ev) => { enqueue([...ev.target.files].map((file) => ({ file, rel: file.name }))); ev.target.value = ""; };

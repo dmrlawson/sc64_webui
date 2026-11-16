@@ -38,7 +38,7 @@ const char *storage_state_message(storage_state_t state) {
     switch (state) {
         case STORAGE_READY: return "Ready";
         case STORAGE_NO_USB: return "SummerCart64 not detected on the USB port. Check the cable.";
-        case STORAGE_NO_LINK: return "A USB device is connected but it is not responding as a SummerCart64.";
+        case STORAGE_NO_LINK: return "The SummerCart64 is not responding. Try Restart; if that does not help, power-cycle the cart.";
         case STORAGE_CONSOLE_ON: return "Please turn off the console to manage files.";
         case STORAGE_BUSY: return "The SD card is in use by the console. Turn the console off and try again.";
         case STORAGE_NO_CARD: return "No SD card in the SummerCart64.";

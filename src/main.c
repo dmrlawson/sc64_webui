@@ -31,7 +31,7 @@
 static wifi_config_t config;
 static bool ap_mode;
 static bool config_checked;   // the card has been readable at least once
-static bool rebooting;
+static bool restarting;
 static dhcp_server_t dhcp_server;
 
 uint32_t plat_millis(void) {
@@ -41,6 +41,26 @@ uint32_t plat_millis(void) {
 void plat_poll(void) {
     tuh_task();
     cyw43_arch_poll();
+}
+
+// A watchdog scratch register keeps its value across a watchdog restart and
+// is zero after power-on.
+#define RESTART_FLAG_MAGIC 0x5c64f1a9u
+
+void plat_restart(void) {
+    if (!restarting) {
+        restarting = true;
+        log_printf("restarting");
+        watchdog_reboot(0, 0, 500);
+    }
+}
+
+bool plat_restart_flag(void) {
+    return watchdog_hw->scratch[0] == RESTART_FLAG_MAGIC;
+}
+
+void plat_set_restart_flag(bool value) {
+    watchdog_hw->scratch[0] = value ? RESTART_FLAG_MAGIC : 0;
 }
 
 static uint32_t wifi_auth(void) {
@@ -120,7 +140,7 @@ static void setup_task(void) {
         led = !led;
         cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, led);
     }
-    if (rebooting || (now - last_check) < SETUP_CHECK_INTERVAL_MS) {
+    if (restarting || (now - last_check) < SETUP_CHECK_INTERVAL_MS) {
         return;
     }
     last_check = now;
@@ -137,9 +157,8 @@ static void setup_task(void) {
         storage_release();
     }
     if (found) {
-        log_printf("wifi: settings found, restarting");
-        rebooting = true;
-        watchdog_reboot(0, 0, 500);   // leaves time to finish answering the page
+        log_printf("wifi: settings found");
+        plat_restart();
     }
 }
 

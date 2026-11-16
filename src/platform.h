@@ -18,6 +18,12 @@ uint32_t plat_millis(void);
 // blocking wait loop: it never runs HTTP request handlers.
 void plat_poll(void);
 
+// Restart the device shortly (replies already queued still go out).
+void plat_restart(void);
+// A flag that survives plat_restart(), used to limit automatic restarts.
+bool plat_restart_flag(void);
+void plat_set_restart_flag(bool value);
+
 // printf-style logging into a ring buffer (served at /api/log) and stdout/UART.
 void log_printf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 // Copy the log (oldest first) into out, returns number of bytes.

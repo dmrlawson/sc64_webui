@@ -648,6 +648,12 @@ static void handle_time(request_t *req) {
     reply_ok(req);
 }
 
+static void handle_restart(request_t *req) {
+    storage_release();
+    reply_ok(req);
+    plat_restart();
+}
+
 // ---- firmware self-update ----
 
 #define UF2_BLOCK_SIZE 512
@@ -788,6 +794,7 @@ static const route_t routes[] = {
     {"POST", "/api/delete", handle_delete},
     {"POST", "/api/rename", handle_rename},
     {"POST", "/api/time", handle_time},
+    {"POST", "/api/restart", handle_restart},
     {"PUT", "/api/firmware", handle_firmware},
 };
 

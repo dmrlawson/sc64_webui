@@ -11,13 +11,17 @@
 #define BUFFER_SECTORS 256u
 
 #define IO_TIMEOUT_MS 5000
-#define RESET_TIMEOUT_MS 1000
+#define LINK_TIMEOUT_MS 500
+#define RESET_TIMEOUT_MS 500
+#define FAILURES_BEFORE_RESTART 3
 #define RELINK_INTERVAL_MS 1000
 
 static bool synced;
 static uint32_t synced_generation;
 static uint32_t last_link_attempt;
 static bool link_attempted;
+static unsigned link_failures;   // consecutive failed handshakes
+static uint32_t io_timeout_ms = IO_TIMEOUT_MS;
 static char version[24] = "?";
 
 static void put_be32(uint8_t *p, uint32_t v) {
@@ -41,7 +45,7 @@ static bool rx_exact(uint8_t *buf, size_t len) {
             last = plat_millis();
             continue;
         }
-        if (!tr_connected() || (plat_millis() - last) > IO_TIMEOUT_MS) {
+        if (!tr_connected() || (plat_millis() - last) > io_timeout_ms) {
             return false;
         }
         plat_poll();
@@ -72,14 +76,18 @@ static int exec(uint8_t id, uint32_t arg0, uint32_t arg1, const uint8_t *tx, siz
     put_be32(&header[4], arg0);
     put_be32(&header[8], arg1);
     if (!tr_write(header, sizeof(header)) || (tx_len > 0 && !tr_write(tx, tx_len))) {
-        log_printf("sc64: could not send command '%c'", id);
+        if (link_failures == 0) {
+            log_printf("sc64: could not send command '%c'", id);
+        }
         synced = false;
         return -1;
     }
     for (;;) {
         uint8_t head[8];
         if (!rx_exact(head, sizeof(head))) {
-            log_printf("sc64: no response to command '%c'", id);
+            if (link_failures == 0) {
+                log_printf("sc64: no response to command '%c'", id);
+            }
             break;
         }
         uint32_t length = get_be32(&head[4]);
@@ -143,6 +151,25 @@ static bool reset_link(void) {
     return true;
 }
 
+// Reset the protocol and check that an SC64 answers.
+static bool handshake(void) {
+    if (!reset_link()) {
+        return false;
+    }
+    synced = true;   // exec() clears it again on failure
+    uint8_t data[8];
+    size_t len = 0;
+    if (exec('v', 0, 0, NULL, 0, data, 4, &len) != 0 || len != 4 || memcmp(data, "SCv2", 4) != 0) {
+        return false;
+    }
+    if (exec('V', 0, 0, NULL, 0, data, 8, &len) != 0 || len != 8) {
+        return false;
+    }
+    snprintf(version, sizeof(version), "%u.%u.%lu", (unsigned)((data[0] << 8) | data[1]),
+             (unsigned)((data[2] << 8) | data[3]), (unsigned long)get_be32(&data[4]));
+    return true;
+}
+
 bool sc64_link(void) {
     if (!tr_connected()) {
         synced = false;
@@ -157,30 +184,33 @@ bool sc64_link(void) {
     }
     link_attempted = true;
     last_link_attempt = plat_millis();
-    synced = false;
     uint32_t generation = tr_generation();
 
-    if (!reset_link()) {
-        log_printf("sc64: link reset failed");
-        return false;
+    // The SC64 answers within milliseconds, so do not hold up the page for
+    // the full I/O timeout while it is not responding.
+    io_timeout_ms = LINK_TIMEOUT_MS;
+    bool ok = handshake();
+    io_timeout_ms = IO_TIMEOUT_MS;
+    if (ok) {
+        synced_generation = generation;
+        link_failures = 0;
+        plat_set_restart_flag(false);
+        log_printf("sc64: connected, firmware %s", version);
+        return true;
     }
-    synced = true;   // exec() clears it again on failure
-    uint8_t data[8];
-    size_t len = 0;
-    if (exec('v', 0, 0, NULL, 0, data, 4, &len) != 0 || len != 4 || memcmp(data, "SCv2", 4) != 0) {
-        log_printf("sc64: device did not identify as SCv2");
-        synced = false;
-        return false;
+    synced = false;
+    if (link_failures == 0) {
+        log_printf("sc64: not responding");
     }
-    if (exec('V', 0, 0, NULL, 0, data, 8, &len) != 0 || len != 8) {
-        synced = false;
-        return false;
+    link_failures++;
+    if (link_failures == FAILURES_BEFORE_RESTART && !plat_restart_flag()) {
+        // A transfer stuck on our side survives the protocol reset, but not
+        // a restart, which re-enumerates the SC64. Done once per outage: if
+        // the cart itself has hung, only power-cycling it helps.
+        plat_set_restart_flag(true);
+        plat_restart();
     }
-    snprintf(version, sizeof(version), "%u.%u.%lu", (unsigned)((data[0] << 8) | data[1]),
-             (unsigned)((data[2] << 8) | data[3]), (unsigned long)get_be32(&data[4]));
-    synced_generation = generation;
-    log_printf("sc64: connected, firmware %s", version);
-    return true;
+    return false;
 }
 
 const char *sc64_version(void) {
