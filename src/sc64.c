@@ -65,16 +65,21 @@ static bool rx_discard(size_t len) {
 // link is then marked for a reset). Up to rx_cap response bytes are stored.
 static int exec(uint8_t id, uint32_t arg0, uint32_t arg1, const uint8_t *tx, size_t tx_len,
                 uint8_t *rx, size_t rx_cap, size_t *rx_len) {
+    if (!synced) {
+        return -1;   // the link already failed; sc64_link() has to bring it back first
+    }
     uint8_t header[12] = {'C', 'M', 'D', id};
     put_be32(&header[4], arg0);
     put_be32(&header[8], arg1);
     if (!tr_write(header, sizeof(header)) || (tx_len > 0 && !tr_write(tx, tx_len))) {
+        log_printf("sc64: could not send command '%c'", id);
         synced = false;
         return -1;
     }
     for (;;) {
         uint8_t head[8];
         if (!rx_exact(head, sizeof(head))) {
+            log_printf("sc64: no response to command '%c'", id);
             break;
         }
         uint32_t length = get_be32(&head[4]);

@@ -46,7 +46,11 @@ target_include_directories(sc64_webui PRIVATE src lib/fatfs lib/dhcpserver)
 set(WEBUI_VERSION "dev" CACHE STRING "Firmware version")
 pico_set_program_version(sc64_webui "${WEBUI_VERSION}")
 
-target_compile_definitions(sc64_webui PRIVATE CYW43_HOST_NAME="sc64" WEBUI_VERSION="${WEBUI_VERSION}")
+target_compile_definitions(sc64_webui PRIVATE
+    CYW43_HOST_NAME="sc64"
+    WEBUI_VERSION="${WEBUI_VERSION}"
+    PICO_MALLOC_PANIC=0   # a failed allocation is handled, not fatal
+)
 target_compile_options(sc64_webui PRIVATE -Wall -Wextra)
 set_source_files_properties(lib/fatfs/ff.c lib/dhcpserver/dhcpserver.c PROPERTIES COMPILE_OPTIONS "-w")
 

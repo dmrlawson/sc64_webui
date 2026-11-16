@@ -19,10 +19,13 @@
 // (CFG_TUH_CDC_LINE_CONTROL_ON_ENUM deliberately not defined).
 
 // Every FTDI IN packet starts with two status bytes, so receive transfers
-// must be exactly one packet long. OUT transfers can span many packets.
+// must be exactly one packet long.
 #define CFG_TUH_CDC_RX_EPSIZE 64
 #define CFG_TUH_CDC_RX_BUFSIZE 4096
-#define CFG_TUH_CDC_TX_EPSIZE 2048
-#define CFG_TUH_CDC_TX_BUFSIZE 4096
+// Data is sent with tuh_edpt_xfer() rather than the driver's transmit stream
+// (see transport_tusb.c), so that stream is kept as small as possible.
+#define CFG_TUH_API_EDPT_XFER 1
+#define CFG_TUH_CDC_TX_EPSIZE 64
+#define CFG_TUH_CDC_TX_BUFSIZE 64
 
 #endif

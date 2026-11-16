@@ -311,6 +311,20 @@ function navigate() {
 
 // ---- file operations ----
 
+// Show that the device is working: creating a folder or deleting a tree can
+// take several seconds.
+async function busy(promise) {
+  const pill = $("state"), text = pill.textContent;
+  pill.textContent = "Working…";
+  $("browser").classList.add("disabled");
+  try {
+    return await promise;
+  } finally {
+    pill.textContent = text;
+    $("browser").classList.toggle("disabled", !ready);
+  }
+}
+
 const badName = (name) => !name || name === "." || name === ".." || /[\\/:*?"<>|\x00-\x1f]/.test(name);
 
 async function mkdir() {
@@ -318,7 +332,7 @@ async function mkdir() {
   if (!name) return;
   if (badName(name)) return toast("That name contains characters the SD card cannot store.");
   try {
-    await api("POST", "/api/mkdir?path=" + q(join(cwd, name)));
+    await busy(api("POST", "/api/mkdir?path=" + q(join(cwd, name))));
     refresh();
   } catch (e) { fail(e); }
 }
@@ -328,7 +342,7 @@ async function rename(entry) {
   if (!name || name === entry.name) return;
   if (badName(name)) return toast("That name contains characters the SD card cannot store.");
   try {
-    await api("POST", `/api/rename?from=${q(join(cwd, entry.name))}&to=${q(join(cwd, name))}`);
+    await busy(api("POST", `/api/rename?from=${q(join(cwd, entry.name))}&to=${q(join(cwd, name))}`));
     refresh();
   } catch (e) { fail(e); }
 }
@@ -337,7 +351,7 @@ async function remove(entry) {
   const what = entry.dir ? `the folder "${entry.name}" and everything inside it` : `"${entry.name}"`;
   if (!confirm(`Delete ${what}? This cannot be undone.`)) return;
   try {
-    await api("POST", "/api/delete?path=" + q(join(cwd, entry.name)));
+    await busy(api("POST", "/api/delete?path=" + q(join(cwd, entry.name))));
   } catch (e) { fail(e); }
   refresh();
 }
@@ -369,7 +383,7 @@ function updateFirmware(file) {
   const xhr = new XMLHttpRequest();
   xhr.open("PUT", "/api/firmware");
   xhr.upload.onprogress = (ev) => showUpdate(`Uploading firmware… ${Math.floor(100 * ev.loaded / ev.total)}%`);
-  const failed = (message) => { updating = null; lastState = ""; toast(message); poll(); };
+  const failed = (message) => { updating = null; lastState = ""; poll(); alert("Firmware update failed: " + message); };
   xhr.onload = () => {
     if (xhr.status === 200) {
       updating.uploading = false;

@@ -669,6 +669,16 @@ static uint32_t get_le32(const uint8_t *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
 
+// Write one sector to the staging area (NULL data: leave it blank).
+static bool stage_sector(uint32_t sector, const uint8_t *data) {
+    if (!plat_fw_stage(sector, data)) {
+        log_printf("update: flash write failed at sector %lu", (unsigned long)sector);
+        return false;
+    }
+    plat_poll();   // flash writes run with interrupts off; let the network catch up
+    return true;
+}
+
 // Receive a .uf2 and write its contents to the staging area. Returns NULL
 // on success (with *sectors set) or an error message.
 static const char *stage_uf2(request_t *req, uint32_t *sectors) {
@@ -685,6 +695,7 @@ static const char *stage_uf2(request_t *req, uint32_t *sectors) {
         for (size_t fill = 0; fill < UF2_BLOCK_SIZE; ) {
             size_t n = body_read(req, block + fill, UF2_BLOCK_SIZE - fill);
             if (n == 0) {
+                log_printf("update: upload stopped after %llu bytes", (unsigned long long)req->body_read);
                 return "Connection lost during upload.";
             }
             fill += n;
@@ -705,12 +716,12 @@ static const char *stage_uf2(request_t *req, uint32_t *sectors) {
         }
         uint32_t sector = (address - FLASH_BASE) / FW_SECTOR_SIZE;
         if (sector != current) {
-            if (current != UINT32_MAX && !plat_fw_stage(current, sector_data)) {
+            if (current != UINT32_MAX && !stage_sector(current, sector_data)) {
                 return "Writing the update to flash failed.";
             }
             // Sectors the file skips must not keep stale data.
             for (uint32_t gap = (current == UINT32_MAX) ? 0 : current + 1; gap < sector; gap++) {
-                if (!plat_fw_stage(gap, NULL)) {
+                if (!stage_sector(gap, NULL)) {
                     return "Writing the update to flash failed.";
                 }
             }
@@ -728,7 +739,7 @@ static const char *stage_uf2(request_t *req, uint32_t *sectors) {
     if (blocks != expected_blocks) {
         return "The firmware file is incomplete.";
     }
-    if (!plat_fw_stage(current, sector_data)) {
+    if (!stage_sector(current, sector_data)) {
         return "Writing the update to flash failed.";
     }
 
@@ -746,6 +757,7 @@ static const char *stage_uf2(request_t *req, uint32_t *sectors) {
 }
 
 static void handle_firmware(request_t *req) {
+    log_printf("update: receiving %llu bytes", (unsigned long long)req->content_length);
     uint32_t sectors = 0;
     const char *error = stage_uf2(req, &sectors);
     if (error) {
@@ -753,6 +765,7 @@ static void handle_firmware(request_t *req) {
         reply_error(req, 400, NULL, error);
         return;
     }
+    log_printf("update: staged %lu kB, installing after this reply", (unsigned long)(sectors * FW_SECTOR_SIZE / 1024));
     reply_ok(req);
     update_sectors = sectors;   // applied by http_task() once this reply is on its way
 }

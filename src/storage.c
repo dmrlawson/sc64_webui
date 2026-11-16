@@ -1,3 +1,5 @@
+#include <stdlib.h>
+
 #include "ff.h"
 #include "diskio.h"
 
@@ -157,7 +159,18 @@ void storage_task(void) {
     }
 }
 
-// ---- FatFs disk I/O glue ----
+// ---- FatFs glue ----
+
+// Heap for FatFs (FF_USE_LFN == 3). Apart from file name buffers, this lets
+// it clear a new directory's cluster in a few large writes; without a heap
+// it writes the cluster one sector at a time, which takes many seconds here.
+void *ff_memalloc(UINT size) {
+    return malloc(size);
+}
+
+void ff_memfree(void *block) {
+    free(block);
+}
 
 DSTATUS disk_status(BYTE pdrv) {
     (void)pdrv;
